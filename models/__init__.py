@@ -1,1 +1,1 @@
-import split
+from .split import *
