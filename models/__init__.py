@@ -1,1 +1,1 @@
-from .node import node
+import split
