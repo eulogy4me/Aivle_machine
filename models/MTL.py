@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
 
-class model(Dataset):
+class getDataset(Dataset):
     def __init__(self, X, y_classification, y_regression):
         self.X = torch.tensor(X, dtype=torch.float32)
         self.y_classification = torch.tensor(y_classification, dtype=torch.long)

@@ -7,9 +7,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-
-# mtl.py에서 클래스 가져오기
-from models.MTL import MultiTaskModel, model
+from models.MTL import MultiTaskModel, getDataset
 
 # 데이터 로드 및 전처리
 path = os.getcwd() + '/data/data.csv'
@@ -36,8 +34,8 @@ y_train_classification = y_train_classification - 1
 y_test_classification = y_test_classification - 1
 
 # 데이터셋 및 데이터로더 정의
-train_dataset = model(X_train, y_train_classification.values, y_train_regression.values)
-test_dataset = model(X_test, y_test_classification.values, y_test_regression.values)
+train_dataset = getDataset(X_train, y_train_classification.values, y_train_regression.values)
+test_dataset = getDataset(X_test, y_test_classification.values, y_test_regression.values)
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
