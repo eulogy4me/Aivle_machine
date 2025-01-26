@@ -6,10 +6,12 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split, KFold, RandomizedSearchCV, HalvingGridSearchCV
+from sklearn.model_selection import train_test_split, KFold, RandomizedSearchCV
+from sklearn.experimental import enable_halving_search_cv  # 이 줄을 추가
+from sklearn.model_selection import HalvingGridSearchCV
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import make_scorer, mean_squared_error
-
+import joblib
 # 전역 설정
 RANDOM_STATE = 42
 
@@ -28,14 +30,8 @@ def preprocess_data(filepath):
     # 필요없는 열 제거
     df.drop(columns=['Address', 'Latitude', 'Longitude', 'Infra_score'], inplace=True)
     
-    # 라벨 인코딩
-    le_gu = LabelEncoder()
-    le_ro = LabelEncoder()
-    df['gu'] = le_gu.fit_transform(df['gu'])
-    df['ro'] = le_ro.fit_transform(df['ro'])
-    
     # 원-핫 인코딩
-    df = pd.get_dummies(data=df, columns=['gu', 'ro'])
+    df = pd.get_dummies(data=df)
     
     # 종합 점수 계산
     df['Qty'] = (3 - df['Cutline_rate']) * 10 + df['Cutline_score']
@@ -53,22 +49,54 @@ def train_model(X, y, search_method, param_grid):
     """
     kfold = KFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)
     
-    model = search_method(
-        estimator=RandomForestRegressor(random_state=RANDOM_STATE),
-        param_distributions=param_grid if search_method == RandomizedSearchCV else None,
-        param_grid=param_grid if search_method == HalvingGridSearchCV else None,
-        cv=kfold,
-        scoring=make_scorer(mean_squared_error, greater_is_better=False),
-        n_iter=100 if search_method == RandomizedSearchCV else None,
-        n_jobs=-1,
-        verbose=2,
-        random_state=RANDOM_STATE
-    )
+    model = None
+    if search_method == RandomizedSearchCV:
+        model = RandomizedSearchCV(
+            estimator=RandomForestRegressor(random_state=RANDOM_STATE),
+            param_distributions=param_grid,
+            n_iter=100,  # RandomizedSearchCV는 n_iter를 지정해야 함
+            cv=kfold,
+            scoring=make_scorer(mean_squared_error, greater_is_better=False),
+            n_jobs=-1,
+            verbose=2,
+            random_state=RANDOM_STATE
+        )
+    elif search_method == HalvingGridSearchCV:
+        model = HalvingGridSearchCV(
+            estimator=RandomForestRegressor(random_state=RANDOM_STATE),
+            param_grid=param_grid,
+            cv=kfold,
+            scoring=make_scorer(mean_squared_error, greater_is_better=False),
+            n_jobs=-1,
+            verbose=2,
+            random_state=RANDOM_STATE
+        )
     
     model.fit(X, y)
     
     print(f"Best Parameters: {model.best_params_}")
     print(f"Best Score (RMSE): {np.sqrt(-model.best_score_)}")
+
+    # 최적 모델 저장
+    best_model = model.best_estimator_
+    joblib.dump(best_model, 'hee.pkl')  # 모델 저장
+    
+    print("Model Saved'")
+
+    return model
+
+def evaluate_model(model, X_valid, y_valid):
+    """
+    검증 데이터셋에서 모델 성능 평가.
+    
+    Parameters:
+    - model: 학습된 모델.
+    - X_valid: 검증 데이터 독립변수.
+    - y_valid: 검증 데이터 종속변수.
+    """
+    predictions = model.predict(X_valid)
+    rmse = np.sqrt(mean_squared_error(y_valid, predictions))
+    print(f"Validation RMSE: {rmse}")
 
 param_grid = {
     'max_depth': range(1, 21),
@@ -85,7 +113,6 @@ y = df['Qty']
 X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.2, random_state=RANDOM_STATE)
 
 print("RandomizedSearchCV Results:")
-train_model(X_train, y_train, RandomizedSearchCV, param_grid)
+model = train_model(X_train, y_train, RandomizedSearchCV, param_grid)
 
-# print("\nHalvingGridSearchCV Results:")
-# train_model(X_train, y_train, HalvingGridSearchCV, param_grid)
+evaluate_model(model, X_valid, y_valid)
