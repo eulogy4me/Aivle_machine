@@ -1,10 +1,6 @@
 import os
 import numpy as np
 import pandas as pd
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split, KFold, RandomizedSearchCV
 from sklearn.experimental import enable_halving_search_cv
