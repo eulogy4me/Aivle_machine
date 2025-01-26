@@ -1,3 +1,1 @@
-from models import split
-
-split.DataProcessor()
+import pandas as pd 
