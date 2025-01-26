@@ -10,8 +10,9 @@ from sklearn.model_selection import train_test_split, KFold, RandomizedSearchCV
 from sklearn.experimental import enable_halving_search_cv  # 이 줄을 추가
 from sklearn.model_selection import HalvingGridSearchCV
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import make_scorer, mean_squared_error
+from sklearn.metrics import mean_squared_error, r2_score
 import joblib
+
 # 전역 설정
 RANDOM_STATE = 42
 
@@ -56,7 +57,7 @@ def train_model(X, y, search_method, param_grid):
             param_distributions=param_grid,
             n_iter=100,  # RandomizedSearchCV는 n_iter를 지정해야 함
             cv=kfold,
-            scoring=make_scorer(mean_squared_error, greater_is_better=False),
+            scoring='neg_mean_squared_error',  # RMSE를 위한 scoring
             n_jobs=-1,
             verbose=2,
             random_state=RANDOM_STATE
@@ -66,7 +67,7 @@ def train_model(X, y, search_method, param_grid):
             estimator=RandomForestRegressor(random_state=RANDOM_STATE),
             param_grid=param_grid,
             cv=kfold,
-            scoring=make_scorer(mean_squared_error, greater_is_better=False),
+            scoring='neg_mean_squared_error',  # RMSE를 위한 scoring
             n_jobs=-1,
             verbose=2,
             random_state=RANDOM_STATE
@@ -96,7 +97,10 @@ def evaluate_model(model, X_valid, y_valid):
     """
     predictions = model.predict(X_valid)
     rmse = np.sqrt(mean_squared_error(y_valid, predictions))
+    r2 = r2_score(y_valid, predictions)
+    
     print(f"Validation RMSE: {rmse}")
+    print(f"Validation R²: {r2}")
 
 param_grid = {
     'max_depth': range(1, 21),
@@ -105,7 +109,8 @@ param_grid = {
     'min_samples_leaf': range(1, 11)
 }
 
-data_filepath = os.path.join(os.getcwd(), "data/data.csv")
+path = os.getcwd()
+data_filepath = os.path.join(path, "data/data.csv")
 df = preprocess_data(data_filepath)
 
 X = df.drop(columns=['Qty'])
@@ -113,6 +118,7 @@ y = df['Qty']
 X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.2, random_state=RANDOM_STATE)
 
 print("RandomizedSearchCV Results:")
-model = train_model(X_train, y_train, RandomizedSearchCV, param_grid)
+# model = train_model(X_train, y_train, RandomizedSearchCV, param_grid)
+model = joblib.load(path + '/hee.pkl')
 
 evaluate_model(model, X_valid, y_valid)
