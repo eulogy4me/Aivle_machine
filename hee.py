@@ -7,7 +7,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split, KFold, RandomizedSearchCV
-from sklearn.experimental import enable_halving_search_cv  # 이 줄을 추가
+from sklearn.experimental import enable_halving_search_cv
 from sklearn.model_selection import HalvingGridSearchCV
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
@@ -57,7 +57,7 @@ def train_model(X, y, search_method, param_grid):
             param_distributions=param_grid,
             n_iter=100,  # RandomizedSearchCV는 n_iter를 지정해야 함
             cv=kfold,
-            scoring='neg_mean_squared_error',  # RMSE를 위한 scoring
+            scoring='neg_mean_squared_error',  # RMSE scoring
             n_jobs=-1,
             verbose=2,
             random_state=RANDOM_STATE
@@ -67,7 +67,7 @@ def train_model(X, y, search_method, param_grid):
             estimator=RandomForestRegressor(random_state=RANDOM_STATE),
             param_grid=param_grid,
             cv=kfold,
-            scoring='neg_mean_squared_error',  # RMSE를 위한 scoring
+            scoring='neg_mean_squared_error',  # RMSE scoring
             n_jobs=-1,
             verbose=2,
             random_state=RANDOM_STATE
@@ -80,8 +80,7 @@ def train_model(X, y, search_method, param_grid):
 
     # 최적 모델 저장
     best_model = model.best_estimator_
-    joblib.dump(best_model, 'hee.pkl')  # 모델 저장
-    
+    joblib.dump(best_model, 'hee.pkl')
     print("Model Saved'")
 
     return model
@@ -105,7 +104,7 @@ def evaluate_model(model, X_valid, y_valid):
 param_grid = {
     'max_depth': range(1, 21),
     'n_estimators': range(50, 301, 50),
-    'min_samples_split': range(2, 21, 2),
+    'min_samples_split': range(2, 21, 1),
     'min_samples_leaf': range(1, 11)
 }
 
