@@ -8,14 +8,12 @@ from sklearn.metrics import mean_squared_error, r2_score
 import joblib
 
 class ModelTrainer():
-    def __init__(self, random_state=42):
-        self.random_state = random_state
+    def __init__(self):
         self.best_estimator = None
         self.type0 = None
         self.type1 = None
 
     def save(self, filepath):
-        """모델 저장 메서드."""
         if self.best_estimator is not None:
             joblib.dump(self.best_estimator, filepath)
             print(f"Model saved to {filepath}")
@@ -23,7 +21,6 @@ class ModelTrainer():
             print("No model to save. Train a model first.")
 
     def load(self, filepath):
-        """모델 로드 메서드."""
         self.best_estimator = joblib.load(filepath)
         print(f"Model loaded from {filepath}")
 
@@ -36,7 +33,7 @@ class ModelTrainer():
         df.drop(
             columns=[
                 'Address', 'Latitude', 'Longitude', 'Infra_score',
-                'Cutline_rate', 'Cutline_score', 'Applicant_type'
+                'Cutline_rate', 'Cutline_score'
             ],
             inplace=True
         )
@@ -49,6 +46,7 @@ class ModelTrainer():
         self.type0['Rate1_ratio'] = self.type0['Rate1'] / self.type0['people']
         self.type0['Rate2_ratio'] = self.type0['Rate2'] / self.type0['people']
         self.type0['Rate3_ratio'] = self.type0['Rate3'] / self.type0['people']
+        self.type0.drop(columns=['Rate1', 'Rate2', 'Rate3'], inplace=True, errors='ignore')
         self.type0 = pd.get_dummies(data=self.type0)
 
         X = self.type0.drop(columns=['Rate1_ratio', 'Rate2_ratio', 'Rate3_ratio'])
@@ -65,28 +63,28 @@ class ModelTrainer():
         - search_method: 하이퍼파라미터 탐색 방식 (RandomizedSearchCV, HalvingGridSearchCV).
         - param_grid: 하이퍼파라미터 탐색 범위.
         """
-        kfold = KFold(n_splits=5, shuffle=True, random_state=self.random_state)
+        kfold = KFold(n_splits=5, shuffle=True)
 
         if search_method == "RSCV":
             model = RandomizedSearchCV(
-                estimator=RandomForestRegressor(random_state=self.random_state),
+                estimator=RandomForestRegressor(),
                 param_distributions=param_grid,
                 n_iter=100,
                 cv=kfold,
                 scoring='neg_mean_squared_error',
                 n_jobs=-1,
                 verbose=2,
-                random_state=self.random_state
+                
             )
         elif search_method == "HSCV":
             model = HalvingGridSearchCV(
-                estimator=RandomForestRegressor(random_state=self.random_state),
+                estimator=RandomForestRegressor(),
                 param_grid=param_grid,
                 cv=kfold,
                 scoring='neg_mean_squared_error',
                 n_jobs=-1,
                 verbose=2,
-                random_state=self.random_state
+                
             )
 
         model.fit(X_train, y_train)
