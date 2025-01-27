@@ -1,119 +1,121 @@
-import os
-import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, GridSearchCV, KFold
+import pandas as pd
+from sklearn.model_selection import KFold, RandomizedSearchCV
+from sklearn.experimental import enable_halving_search_cv
+from sklearn.model_selection import HalvingGridSearchCV
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, make_scorer
+from sklearn.metrics import mean_squared_error, r2_score
+import joblib
 
-class DataProcessor:
-    def __init__(self):
-        self.load_data()
-        self.preprocess_data()
+class ModelTrainer():
+    def __init__(self, random_state=42):
+        self.random_state = random_state
+        self.best_estimator = None
+        self.type0 = None
+        self.type1 = None
 
-    def load_data(self):
-        path = os.getcwd()
-        self.train = pd.read_csv(os.path.join(path, 'data/train.csv'))
-        self.val = pd.read_csv(os.path.join(path, 'data/val.csv'))
+    def save(self, filepath):
+        """모델 저장 메서드."""
+        if self.best_estimator is not None:
+            joblib.dump(self.best_estimator, filepath)
+            print(f"Model saved to {filepath}")
+        else:
+            print("No model to save. Train a model first.")
 
-    def preprocess_data(self):
-        self.train['people'] = self.train['rate_1'] + self.train['rate_2'] + self.train['rate_3']
-        self.train = self.train[self.train['family_type'] != 1]
-        self.train['size'] = self.train['size'].str.extract('(\d+\.?\d*)').astype(float)
-        self.train.drop(columns=['application_type', 'name', 'address', 'family_type'], inplace=True)
-        self.train['rate_1_ratio'] = self.train['rate_1'] / self.train['people']
-        self.train['rate_2_ratio'] = self.train['rate_2'] / self.train['people']
-        self.train['rate_3_ratio'] = self.train['rate_3'] / self.train['people']
+    def load(self, filepath):
+        """모델 로드 메서드."""
+        self.best_estimator = joblib.load(filepath)
+        print(f"Model loaded from {filepath}")
 
-        self.val = self.val[self.val['family_type'] != 1]
-        self.val['size'] = self.val['size'].str.extract('(\d+\.?\d*)').astype(float)
-        self.val.drop(columns=['application_type', 'name', 'address', 'family_type'], inplace=True)
-        self.val['rate_1_ratio'] = self.val['rate_1'] / self.val['people']
-        self.val['rate_2_ratio'] = self.val['rate_2'] / self.val['people']
-        self.val['rate_3_ratio'] = self.val['rate_3'] / self.val['people']
+    def preprocess_data(self, filepath):
+        df = pd.read_csv(filepath)
+        df[['gu', 'ro']] = df['Address'].str.split(' ', expand=True).iloc[:, :2]
+        df['Supply_type'] = df['Supply_type'].str.replace(r'\D', '', regex=True)
+        df['Qty'] = (3 - df['Cutline_rate']) * 10 + df['Cutline_score']
 
-        x = self.train.drop(columns=['rate_1_ratio', 'rate_2_ratio', 'rate_3_ratio'])
-        y = self.train[['rate_1_ratio', 'rate_2_ratio', 'rate_3_ratio']]
-
-        self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(x, y, test_size=0.2)
-
-class ModelTrainer:
-    def __init__(self, X_train, y_train):
-        self.X_train = X_train
-        self.y_train = y_train
-        self.model = None
-
-    def train_model(self):
-        param = {
-            'max_depth': range(1, 10),
-            'n_estimators': range(1, 100, 10)
-        }
-
-        kfold = KFold(n_splits=5, shuffle=True)
-        self.model = GridSearchCV(
-            RandomForestRegressor(),
-            param_grid=param,
-            cv=kfold,
-            scoring=make_scorer(mean_squared_error, greater_is_better=False),
-            n_jobs=-1
+        df.drop(
+            columns=[
+                'Address', 'Latitude', 'Longitude', 'Infra_score',
+                'Cutline_rate', 'Cutline_score', 'Applicant_type'
+            ],
+            inplace=True
         )
 
-        self.model.fit(self.X_train, self.y_train)
+        self.type0 = df[df['Applied_type'] == 0].copy()
+        self.type1 = df[df['Applied_type'] == 1].copy()
+        
+        self.type1.drop(columns=['Rate1', 'Rate2', 'Rate3'], inplace=True, errors='ignore')
 
-    def get_best_model(self):
-        return self.model.best_estimator_
+        self.type0['Rate1_ratio'] = self.type0['Rate1'] / self.type0['people']
+        self.type0['Rate2_ratio'] = self.type0['Rate2'] / self.type0['people']
+        self.type0['Rate3_ratio'] = self.type0['Rate3'] / self.type0['people']
+        self.type0 = pd.get_dummies(data=self.type0)
 
-class ModelEvaluator:
-    def __init__(self, model, X_val, y_val):
-        self.model = model
-        self.X_val = X_val
-        self.y_val = y_val
+        X = self.type0.drop(columns=['Rate1_ratio', 'Rate2_ratio', 'Rate3_ratio'])
+        y = self.type0[['Rate1_ratio', 'Rate2_ratio', 'Rate3_ratio']]
 
-    def evaluate(self):
-        y_val_pred = self.model.predict(self.X_val)
+        return X, y
 
-        mse = mean_squared_error(self.y_val, y_val_pred)
-        mae = mean_absolute_error(self.y_val, y_val_pred)
-        r2 = r2_score(self.y_val, y_val_pred)
+    def train_model(self, X_train, y_train, search_method, param_grid):
+        """
+        모델 학습을 위한 메서드.
 
-        print(f"Validation MSE: {mse:.5f}")
-        print(f"Validation MAE: {mae:.5f}")
-        print(f"Validation R2 Score: {r2:.5f}")
+        Parameters:
+        - X, y: 독립변수와 종속변수 데이터.
+        - search_method: 하이퍼파라미터 탐색 방식 (RandomizedSearchCV, HalvingGridSearchCV).
+        - param_grid: 하이퍼파라미터 탐색 범위.
+        """
+        kfold = KFold(n_splits=5, shuffle=True, random_state=self.random_state)
 
-        return mse, mae, r2
+        if search_method == "RSCV":
+            model = RandomizedSearchCV(
+                estimator=RandomForestRegressor(random_state=self.random_state),
+                param_distributions=param_grid,
+                n_iter=100,
+                cv=kfold,
+                scoring='neg_mean_squared_error',
+                n_jobs=-1,
+                verbose=2,
+                random_state=self.random_state
+            )
+        elif search_method == "HSCV":
+            model = HalvingGridSearchCV(
+                estimator=RandomForestRegressor(random_state=self.random_state),
+                param_grid=param_grid,
+                cv=kfold,
+                scoring='neg_mean_squared_error',
+                n_jobs=-1,
+                verbose=2,
+                random_state=self.random_state
+            )
 
-class Predictor:
-    def __init__(self, model, train_features, val_data):
-        self.model = model
-        self.train_features = train_features
-        self.val_data = val_data
+        model.fit(X_train, y_train)
+        self.best_estimator = model.best_estimator_
 
-    def predict(self):
-        val_x = self.val_data[self.train_features]
-        pred_ratios = self.model.predict(val_x)
+    def evaluate_model(self, X_valid, y_valid):
+        """
+        검증 데이터셋에서 모델 성능 평가.
 
-        pred_ratios_df = pd.DataFrame(
-            pred_ratios, 
-            columns=['rate_1_ratio', 'rate_2_ratio', 'rate_3_ratio']
-        )
+        Parameters:
+        - X_valid: 검증 데이터 독립변수.
+        - y_valid: 검증 데이터 종속변수.
+        """
+        y_pred = self.best_estimator.predict(X_valid)
+        rmse = np.sqrt(mean_squared_error(y_valid, y_pred))
+        r2 = r2_score(y_valid, y_pred)
 
-        self.val_data = self.val_data.reset_index(drop=True)
-        self.val_data[['rate_1_ratio', 'rate_2_ratio', 'rate_3_ratio']] = pred_ratios_df
+        print(f"Validation RMSE: {rmse}")
+        print(f"Validation R²: {r2}")
 
-        self.val_data['rate_1'] = self.val_data['rate_1_ratio'] * self.val_data['people']
-        self.val_data['rate_2'] = self.val_data['rate_2_ratio'] * self.val_data['people']
-        self.val_data['rate_3'] = self.val_data['rate_3_ratio'] * self.val_data['people']
+    def split(self, X):
+        """
+        type1 데이터에 Rate1, Rate2, Rate3 열을 추가하는 메서드.
+        """
+        type1_features = pd.get_dummies(self.type1)
+        type1_features = type1_features.reindex(columns=X.columns, fill_value=0)
+        predictions = self.best_estimator.predict(type1_features)
 
-        print(self.val_data[['people', 'rate_1', 'rate_2', 'rate_3']])
-
-if __name__ == "__main__":
-    data_processor = DataProcessor()
-
-    model_trainer = ModelTrainer(data_processor.X_train, data_processor.y_train)
-    model_trainer.train_model()
-    best_model = model_trainer.get_best_model()
-
-    evaluator = ModelEvaluator(best_model, data_processor.X_val, data_processor.y_val)
-    evaluator.evaluate()
-
-    predictor = Predictor(best_model, data_processor.X_train.columns, data_processor.val)
-    predictor.predict()
+        self.type1['Rate1'] = predictions[:, 0] * self.type1['people']
+        self.type1['Rate2'] = predictions[:, 1] * self.type1['people']
+        self.type1['Rate3'] = predictions[:, 2] * self.type1['people']
+        return self.type1

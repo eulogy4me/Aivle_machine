@@ -24,15 +24,21 @@ class ModelTrainer:
         # 공급유형 숫자만 남기기
         df['Supply_type'] = df['Supply_type'].str.replace(r'\D', '', regex=True)
         
+        # 종합 점수
+        df['Qty'] = (3 - df['Cutline_rate']) * 10 + df['Cutline_score']
+
         # 필요없는 열 제거
-        df.drop(columns=['Address', 'Latitude', 'Longitude', 'Infra_score'], inplace=True)
+        df.drop(
+            columns=[
+                'Address', 'Latitude', 'Longitude', 'Infra_score',
+                'Cutline_rate','Cutline_score'
+            ],
+            inplace=True
+        )
         
         # 원-핫 인코딩
-        df = pd.get_dummies(data=df)
-        
-        # 종합 점수 계산
-        df['Qty'] = (3 - df['Cutline_rate']) * 10 + df['Cutline_score']
-        
+        df = pd.get_dummies(data=df.drop(columns=['Qty']))
+                
         return df
 
     def train_model(self, X, y, search_method, param_grid):

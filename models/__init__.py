@@ -1,2 +1,2 @@
-from .Spliter import DataProcessor, ModelTrainer
+from .Spliter import ModelTrainer
 from .hee import ModelTrainer
