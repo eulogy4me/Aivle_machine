@@ -1,18 +1,21 @@
 import numpy as np
 import pandas as pd
+import os
+import joblib
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
-import joblib
 
 class ModelTrainer:
-    def __init__(self, random_state=-1):
+    def __init__(self, random_state=42, n_clusters=5):
         self.random_state = random_state
+        self.n_clusters = n_clusters
         self.model = None
+        self.scaler = StandardScaler()
         
     def save(self, filepath):
         if self.model is not None:
             joblib.dump(self.model, filepath)
-            print(f"Model saved {filepath}")
+            print(f"Model saved at {filepath}")
         else:
             print("No model to save")
             
@@ -21,10 +24,11 @@ class ModelTrainer:
         print(f"Model loaded from {filepath}")
 
     def preprocess_data(self, filepath):
-        df = pd.read_csv(filepath)        
+        df = pd.read_csv(filepath)
         
         df.drop(
             columns=[
+                'Name',
                 'Address', 'Latitude', 'Longitude', 'Infra_score',
                 'Cutline_rate','Cutline_score', 'Supply_type',
                 'Applicant_type', 'Units','Gender','Shared','Year','Quarter',
@@ -35,16 +39,19 @@ class ModelTrainer:
         
         return df
 
-    def train_model(self, X, y, search_method, param_grid):
+    def train_model(self, filepath):
+        df = self.preprocess_data(filepath)
+        df.fillna(0, inplace=True)
 
-
-
-        self.model.fit(X, y)
+        features = self.scaler.fit_transform(df.values)
         
-        print(f"Best Parameters: {self.model.best_params_}")
-        print(f"Best Score (RMSE): {np.sqrt(-self.model.best_score_)}")
+        self.model = KMeans(n_clusters=self.n_clusters, random_state=self.random_state)
+        self.model.fit(features)
+        
+        print("Model trained with KMeans clustering")
+        return features
 
-        self.model = self.model.best_estimator_
-
-    def evaluate_model(self, X_valid, y_valid):
-        predictions = self.model.predict(X_valid)
+    def calculate_convenience_score(self, features):
+        distances = self.model.transform(features)
+        scores = 1 / (1 + distances.min(axis=1))
+        return scores
