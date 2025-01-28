@@ -1,4 +1,4 @@
-from models import Spliter
+import models
 from sklearn.model_selection import train_test_split
 import os
 import joblib
@@ -15,7 +15,7 @@ if __name__ == "__main__":
     }
     
     data = path + "/data/data.csv"
-    trainer = Spliter.ModelTrainer(random_state=RANDOM_STATE)
+    trainer = models.Spliter.ModelTrainer(random_state=RANDOM_STATE)
     X,y = trainer.preprocess_data(data)
     X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.2, random_state=RANDOM_STATE)
     trainer.train_model(X_train,y_train,param_grid)
