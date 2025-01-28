@@ -32,10 +32,8 @@ class ModelTrainer:
         df.drop(
             columns=[
                 'Address', 'Latitude', 'Longitude', 'Infra_score',
-                'Cutline_rate','Cutline_score','Units',
-                'Gender','Shared','Year','Quarter','Applied_type','Counts_daiso',
-                'Counts_supermarket','Counts_laundry','Counts_pharmacy','Counts_cafe',
-                'Counts_convstore',
+                'Gender','Shared','Quarter','Counts_supermarket','Counts_laundry',
+                'Counts_pharmacy'
             ],
             inplace=True
         )
