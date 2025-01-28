@@ -4,7 +4,7 @@ import os
 import joblib
 
 if __name__ == "__main__":
-    RANDOM_STATE=-1
+    RANDOM_STATE=42
     path = os.getcwd()
     
     param_grid = {

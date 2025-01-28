@@ -8,7 +8,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 import joblib
 
 class ModelTrainer:
-    def __init__(self, random_state=42):
+    def __init__(self, random_state=0):
         self.random_state = random_state
         self.model = None
         
@@ -24,43 +24,23 @@ class ModelTrainer:
         print(f"Model loaded from {filepath}")
 
     def preprocess_data(self, filepath):
-        """
-        데이터 전처리를 수행하는 메서드.
-        """
         df = pd.read_csv(filepath)
-        
-        # 주소를 ~구 및 ~로, ~길 만 남기기
         df[['gu', 'ro']] = df['Address'].str.split(' ', expand=True).iloc[:, :2]
-        
-        # 공급유형 숫자만 남기기
         df['Supply_type'] = df['Supply_type'].str.replace(r'\D', '', regex=True)
-        
-        # 종합 점수
-        df['Qty'] = (3 - df['Cutline_rate']) * 10 + df['Cutline_score']
 
-        # 필요없는 열 제거
         df.drop(
             columns=[
-                'Address', 'Latitude', 'Longitude', 'Infra_score',
-                'Cutline_rate','Cutline_score'
+                'Address', 'Latitude', 'Longitude', 'Infra_score'
             ],
             inplace=True
         )
         
-        # 원-핫 인코딩
-        df = pd.get_dummies(data=df.drop(columns=['Qty']))
-                
+        df = pd.get_dummies(data=df)
+        df['Qty'] = (3 - df['Cutline_rate']) * 10 + df['Cutline_score']
+
         return df
 
     def train_model(self, X, y, search_method, param_grid):
-        """
-        모델 학습을 위한 메서드.
-
-        Parameters:
-        - X, y: 독립변수와 종속변수 데이터.
-        - search_method: 하이퍼파라미터 탐색 방식 (RandomizedSearchCV, HalvingGridSearchCV).
-        - param_grid: 하이퍼파라미터 탐색 범위.
-        """
         kfold = KFold(n_splits=5, shuffle=True, random_state=self.random_state)
         
         if search_method == "RandomizedSearchCV":

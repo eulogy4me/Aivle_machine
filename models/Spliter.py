@@ -9,7 +9,7 @@ from xgboost import XGBRegressor
 import joblib
 
 class ModelTrainer():
-    def __init__(self, random_state=42):
+    def __init__(self, random_state=0):
         self.random_state = random_state
         self.type0 = None
         self.type1 = None

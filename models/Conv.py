@@ -5,7 +5,7 @@ from sklearn.preprocessing import StandardScaler
 import joblib
 
 class ModelTrainer:
-    def __init__(self, random_state=42):
+    def __init__(self, random_state=-1):
         self.random_state = random_state
         self.model = None
         
