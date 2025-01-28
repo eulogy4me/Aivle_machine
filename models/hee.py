@@ -27,16 +27,19 @@ class ModelTrainer:
         df = pd.read_csv(filepath)
         df[['gu', 'ro']] = df['Address'].str.split(' ', expand=True).iloc[:, :2]
         df['Supply_type'] = df['Supply_type'].str.replace(r'\D', '', regex=True)
+        qty = (3 - df['Cutline_rate']) * 10 + df['Cutline_score']
 
         df.drop(
             columns=[
-                'Address', 'Latitude', 'Longitude', 'Infra_score'
+                'Address', 'Latitude', 'Longitude', 'Infra_score',
+                'Cutline_rate','Cutline_score','Applicant_type','Units',
+                'Gender','Shared','Year','Quarter'
             ],
             inplace=True
         )
         
         df = pd.get_dummies(data=df)
-        df['Qty'] = (3 - df['Cutline_rate']) * 10 + df['Cutline_score']
+        df['Qty'] = qty
 
         return df
 
