@@ -20,6 +20,6 @@ if __name__ == "__main__":
     
     print(df.head())
     
-    trainer.save("kmeans_model.pkl")
+    trainer.save("ConvScore.pkl")
     
-    df.to_csv(path + "/data/modified_data.csv", index=False)
+    df.to_csv(path + "/data/data_ConvScore.csv", index=False)
