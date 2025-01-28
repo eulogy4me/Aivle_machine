@@ -5,23 +5,24 @@ from sklearn.experimental import enable_halving_search_cv
 from sklearn.model_selection import HalvingGridSearchCV
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
+from xgboost import XGBRegressor
 import joblib
 
 class ModelTrainer():
-    def __init__(self):
-        self.best_estimator = None
+    def __init__(self, random_state=42):
+        self.random_state = random_state
         self.type0 = None
         self.type1 = None
 
     def save(self, filepath):
-        if self.best_estimator is not None:
-            joblib.dump(self.best_estimator, filepath)
+        if self.model is not None:
+            joblib.dump(self.model, filepath)
             print(f"Model saved to {filepath}")
         else:
             print("No model to save. Train a model first.")
 
     def load(self, filepath):
-        self.best_estimator = joblib.load(filepath)
+        self.model = joblib.load(filepath)
         print(f"Model loaded from {filepath}")
 
     def preprocess_data(self, filepath):
@@ -54,51 +55,27 @@ class ModelTrainer():
 
         return X, y
 
-    def train_model(self, X_train, y_train, search_method, param_grid):
+    def train_model(self, X_train, y_train, param_grid):
         """
-        모델 학습을 위한 메서드.
-
-        Parameters:
-        - X, y: 독립변수와 종속변수 데이터.
-        - search_method: 하이퍼파라미터 탐색 방식 (RandomizedSearchCV, HalvingGridSearchCV).
-        - param_grid: 하이퍼파라미터 탐색 범위.
+        모델 학습
         """
         kfold = KFold(n_splits=5, shuffle=True)
 
-        if search_method == "RSCV":
-            model = RandomizedSearchCV(
-                estimator=RandomForestRegressor(),
-                param_distributions=param_grid,
-                n_iter=100,
-                cv=kfold,
-                scoring='neg_mean_squared_error',
-                n_jobs=-1,
-                verbose=2,
-                
-            )
-        elif search_method == "HSCV":
-            model = HalvingGridSearchCV(
-                estimator=RandomForestRegressor(),
-                param_grid=param_grid,
-                cv=kfold,
-                scoring='neg_mean_squared_error',
-                n_jobs=-1,
-                verbose=2,
-                
-            )
-
+        model = RandomizedSearchCV(
+            estimator=RandomForestRegressor(random_state=self.random_state),
+            param_distributions=param_grid,
+            n_iter=10,
+            cv=kfold,
+            scoring='neg_mean_squared_error',
+            n_jobs=-1,
+            verbose=2,
+        )
+    
         model.fit(X_train, y_train)
-        self.best_estimator = model.best_estimator_
+        self.model = model.best_estimator_
 
     def evaluate_model(self, X_valid, y_valid):
-        """
-        검증 데이터셋에서 모델 성능 평가.
-
-        Parameters:
-        - X_valid: 검증 데이터 독립변수.
-        - y_valid: 검증 데이터 종속변수.
-        """
-        y_pred = self.best_estimator.predict(X_valid)
+        y_pred = self.model.predict(X_valid)
         rmse = np.sqrt(mean_squared_error(y_valid, y_pred))
         r2 = r2_score(y_valid, y_pred)
 
@@ -106,12 +83,9 @@ class ModelTrainer():
         print(f"Validation R²: {r2}")
 
     def split(self, X):
-        """
-        type1 데이터에 Rate1, Rate2, Rate3 열을 추가하는 메서드.
-        """
         type1_features = pd.get_dummies(self.type1)
         type1_features = type1_features.reindex(columns=X.columns, fill_value=0)
-        predictions = self.best_estimator.predict(type1_features)
+        predictions = self.model.predict(type1_features)
 
         self.type1['Rate1'] = predictions[:, 0] * self.type1['people']
         self.type1['Rate2'] = predictions[:, 1] * self.type1['people']

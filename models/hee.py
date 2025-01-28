@@ -11,6 +11,17 @@ class ModelTrainer:
     def __init__(self, random_state=42):
         self.random_state = random_state
         self.model = None
+        
+    def save(self, filepath):
+        if self.model is not None:
+            joblib.dump(self.model, filepath)
+            print(f"Model saved {filepath}")
+        else:
+            print("No model to save")
+            
+    def load(self, filepath):
+        self.model = joblib.load(filepath)
+        print(f"Model loaded from {filepath}")
 
     def preprocess_data(self, filepath):
         """
@@ -52,7 +63,7 @@ class ModelTrainer:
         """
         kfold = KFold(n_splits=5, shuffle=True, random_state=self.random_state)
         
-        if search_method == RandomizedSearchCV:
+        if search_method == "RandomizedSearchCV":
             self.model = RandomizedSearchCV(
                 estimator=RandomForestRegressor(random_state=self.random_state),
                 param_distributions=param_grid,
@@ -63,7 +74,7 @@ class ModelTrainer:
                 verbose=2,
                 random_state=self.random_state
             )
-        elif search_method == HalvingGridSearchCV:
+        elif search_method == "HalvingGridSearchCV":
             self.model = HalvingGridSearchCV(
                 estimator=RandomForestRegressor(random_state=self.random_state),
                 param_grid=param_grid,
@@ -79,23 +90,10 @@ class ModelTrainer:
         print(f"Best Parameters: {self.model.best_params_}")
         print(f"Best Score (RMSE): {np.sqrt(-self.model.best_score_)}")
 
-        # 최적 모델 저장
-        best_model = self.model.best_estimator_
-        joblib.dump(best_model, 'hee.pkl')
-        print("Model Saved")
+        self.model = self.model.best_estimator_
 
-        return self.model
-
-    def evaluate_model(self, model, X_valid, y_valid):
-        """
-        검증 데이터셋에서 모델 성능 평가.
-
-        Parameters:
-        - model: 학습된 모델.
-        - X_valid: 검증 데이터 독립변수.
-        - y_valid: 검증 데이터 종속변수.
-        """
-        predictions = model.predict(X_valid)
+    def evaluate_model(self, X_valid, y_valid):
+        predictions = self.model.predict(X_valid)
         rmse = np.sqrt(mean_squared_error(y_valid, predictions))
         r2 = r2_score(y_valid, predictions)
 
