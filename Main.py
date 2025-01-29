@@ -38,5 +38,5 @@ if __name__ == "__main__":
     y_pred = trainer.evaluate_model(X_valid, y_valid)
 
     df['Qty_pred'] = trainer.model.predict(X)
-
+    df.to_csv(os.getcwd() + "/data/data_fn.csv")
     print(df[['Qty', 'Qty_pred']].head())

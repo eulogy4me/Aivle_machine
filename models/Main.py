@@ -67,7 +67,7 @@ class ModelTrainer:
 
     def evaluate_model(self, X_valid, y_valid):
         y_pred = self.model.predict(X_valid)
-        y_pred = np.round(y_pred, 1)  # y_pred를 반올림 처리
+        y_pred = np.round(y_pred).astype(int)
         print('Score MAE:', mean_absolute_error(y_valid, y_pred))
         print('Score R2:', r2_score(y_valid, y_pred))
         return y_pred
