@@ -5,3 +5,4 @@ store.json
 *.pth
 *.pkl
 tempCodeRunnerFile.py
+catboost_info/

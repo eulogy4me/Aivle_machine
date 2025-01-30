@@ -5,6 +5,14 @@ from sklearn.model_selection import train_test_split
 from imblearn.over_sampling import RandomOverSampler
 import os
 
+def process_supply_type(value):
+    try:
+        num = float(value)
+        return round(num)
+    except ValueError:
+        num_str = ''.join(filter(str.isdigit, value))
+        return int(num_str) if num_str else None
+
 if __name__ == "__main__":
     RANDOM_STATE=42
     dfpath = os.getcwd() + "/data/data.csv"
@@ -13,7 +21,7 @@ if __name__ == "__main__":
     df = pd.read_csv(dfpath)
     
     df[['gu', 'ro']] = df['Address'].str.split(' ', expand=True).iloc[:, :2]
-    df['Supply_type'] = df['Supply_type'].str.replace(r'\D', '', regex=True)
+    df['Supply_type'] = df['Supply_type'].apply(process_supply_type).astype(int)
     qty = (3 - df['Cutline_rate']) * 10 + df['Cutline_score']
 
     df.drop(
@@ -56,6 +64,6 @@ if __name__ == "__main__":
     trainer.save(modelpath)
     mae, r2, rmse = trainer.evaluate_model(X_valid,y_valid)
     print(f"Validation Results -> RMSE: {rmse:.4f}, MAE: {mae:.4f}, R²: {r2:.4f}")
-    df['Qty_pred'] = np.round(trainer.y_pred).astype(int)
+    df['Qty_pred'] = np.round(trainer.model.predict(X)).astype(int)
     df.to_csv(os.getcwd() + "/data/data_fn.csv")
     print(df[['Qty', 'Qty_pred']].head())
