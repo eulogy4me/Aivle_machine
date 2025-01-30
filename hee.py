@@ -1,6 +1,5 @@
 from models.hee import ModelTrainer
 from imblearn.over_sampling import SMOTE
-
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -64,8 +63,8 @@ if __name__ == "__main__":
     
     best_score = float("inf")
 
-    for lr in np.linspace(0.001, 0.1, 10):
-        for depth in range(2, 16):
+    for lr in np.linspace(0.007, 0.1, 5):
+        for depth in range(6, 13):
             print(f"Training : lr={lr:.3f}, depth={depth}")
 
             trainer.train_model(X_train, y_train, X_valid, y_valid, lr, depth)
