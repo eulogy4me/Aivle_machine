@@ -1,4 +1,4 @@
-import models
+from models.Main import ModelTrainer
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import os
@@ -7,7 +7,7 @@ if __name__ == "__main__":
     RANDOM_STATE=42
     dfpath = os.getcwd() + "/data/data.csv"
     modelpath = os.getcwd() + "/main.pkl"
-    trainer = models.Main.ModelTrainer(random_state=RANDOM_STATE)
+    trainer = ModelTrainer(random_state=RANDOM_STATE)
     trainer.load(filepath=modelpath)
     df = pd.read_csv(dfpath)
     
