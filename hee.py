@@ -46,25 +46,25 @@ if __name__ == "__main__":
         X, y, test_size=0.2, random_state=RANDOM_STATE
     )
 
-    # best_score = float("inf")
+    best_score = float("inf")
 
-    # for lr in np.linspace(0.001, 0.1, 10):  # 학습률 (0.001 ~ 0.1, 10단계)
-    #     for depth in range(3, 21):  # 트리 깊이 (3 ~ 20)
-    #         print(f"Training model: lr={lr:.3f}, depth={depth}")
+    for lr in np.linspace(0.001, 0.1, 10):  # 학습률 (0.001 ~ 0.1, 10단계)
+        for depth in range(3, 21):  # 트리 깊이 (3 ~ 20)
+            print(f"Training model: lr={lr:.3f}, depth={depth}")
 
-    #         trainer.train_model(X_train, y_train, X_valid, y_valid, lr, depth)
-    #         mae, r2 , rmse = trainer.evaluate_model(X_valid, y_valid)
-    #         print(f"Validation Results -> RMSE: {rmse:.4f}, MAE: {mae:.4f}, R²: {r2:.4f}")
+            trainer.train_model(X_train, y_train, X_valid, y_valid, lr, depth)
+            mae, r2 , rmse = trainer.evaluate_model(X_valid, y_valid)
+            print(f"Validation Results -> RMSE: {rmse:.4f}, MAE: {mae:.4f}, R²: {r2:.4f}")
 
-    #         if rmse < best_score:
-    #             best_score = rmse
-    #             trainer.save(modelpath)
-    #             print(f"New best model saved! RMSE: {best_score:.4f}")
+            if rmse < best_score:
+                best_score = rmse
+                trainer.save(modelpath)
+                print(f"New best model saved! RMSE: {best_score:.4f}")
 
-    trainer.train_model(X_train,y_train,X_valid,y_valid)
-    trainer.save(modelpath)
-    mae, r2, rmse = trainer.evaluate_model(X_valid,y_valid)
-    print(f"Validation Results -> RMSE: {rmse:.4f}, MAE: {mae:.4f}, R²: {r2:.4f}")
+    # trainer.train_model(X_train,y_train,X_valid,y_valid)
+    # trainer.save(modelpath)
+    # mae, r2, rmse = trainer.evaluate_model(X_valid,y_valid)
+    # print(f"Validation Results -> RMSE: {rmse:.4f}, MAE: {mae:.4f}, R²: {r2:.4f}")
     df['Qty_pred'] = np.round(trainer.model.predict(X)).astype(int)
     df.to_csv(os.getcwd() + "/data/data_fn.csv")
     print(df[['Qty', 'Qty_pred']].head())
