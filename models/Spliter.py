@@ -1,12 +1,17 @@
-import numpy as np
 import pandas as pd
-from sklearn.model_selection import KFold, RandomizedSearchCV
-from sklearn.experimental import enable_halving_search_cv
-from sklearn.model_selection import HalvingGridSearchCV
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
-from xgboost import XGBRegressor
+import numpy as np
 import joblib
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import *
+from catboost import CatBoostRegressor, Pool
+
+def process_supply_type(value):
+    try:
+        num = float(value)
+        return round(num)
+    except ValueError:
+        num_str = ''.join(filter(str.isdigit, value))
+        return int(num_str) if num_str else None
 
 class ModelTrainer():
     def __init__(self, random_state=0):
@@ -22,72 +27,35 @@ class ModelTrainer():
             print("No model to save. Train a model first.")
 
     def load(self, filepath):
-        self.model = joblib.load(filepath)
-        print(f"Model loaded from {filepath}")
+        if self.model is not None:
+            self.model = joblib.load(filepath)
+            print(f"Model Loaded from {filepath}")
+        else:
+            print("No Model to Load")
+            
+    def train_model(self, X_train, y_train, X_valid, y_valid, lr=0.1, depth=6, iter=1000, es=10):
+        train_data = Pool(X_train, y_train)
+        valid_data = Pool(X_valid, y_valid)
 
-    def preprocess_data(self, filepath):
-        df = pd.read_csv(filepath)
-        df[['gu', 'ro']] = df['Address'].str.split(' ', expand=True).iloc[:, :2]
-        df['Supply_type'] = df['Supply_type'].str.replace(r'\D', '', regex=True)
-        df['Qty'] = (3 - df['Cutline_rate']) * 10 + df['Cutline_score']
-
-        df.drop(
-            columns=[
-                'Address', 'Latitude', 'Longitude', 'Infra_score',
-                'Cutline_rate', 'Cutline_score'
-            ],
-            inplace=True
+        self.model = CatBoostRegressor(
+            iterations=iter,
+            od_type='Iter',
+            depth=depth,
+            learning_rate=lr,
+            loss_function='MultiRMSE',
+            eval_metric='MultiRMSE',
+            verbose=100,
+            task_type='CPU'
         )
-
-        self.type0 = df[df['Applied_type'] == 0].copy()
-        self.type1 = df[df['Applied_type'] == 1].copy()
         
-        self.type1.drop(columns=['Rate1', 'Rate2', 'Rate3'], inplace=True, errors='ignore')
-
-        self.type0['Rate1_ratio'] = self.type0['Rate1'] / self.type0['people']
-        self.type0['Rate2_ratio'] = self.type0['Rate2'] / self.type0['people']
-        self.type0['Rate3_ratio'] = self.type0['Rate3'] / self.type0['people']
-        self.type0.drop(columns=['Rate1', 'Rate2', 'Rate3'], inplace=True, errors='ignore')
-        self.type0 = pd.get_dummies(data=self.type0)
-
-        X = self.type0.drop(columns=['Rate1_ratio', 'Rate2_ratio', 'Rate3_ratio'])
-        y = self.type0[['Rate1_ratio', 'Rate2_ratio', 'Rate3_ratio']]
-
-        return X, y
-
-    def train_model(self, X_train, y_train, param_grid):
-        """
-        모델 학습
-        """
-        kfold = KFold(n_splits=5, shuffle=True)
-
-        model = RandomizedSearchCV(
-            estimator=RandomForestRegressor(random_state=self.random_state),
-            param_distributions=param_grid,
-            n_iter=10,
-            cv=kfold,
-            scoring='neg_mean_squared_error',
-            n_jobs=-1,
-            verbose=2,
+        self.model.fit(
+            train_data,
+            eval_set=valid_data,
+            early_stopping_rounds=es,
+            use_best_model=True,
+            plot=True
         )
-    
-        model.fit(X_train, y_train)
-        self.model = model.best_estimator_
 
     def evaluate_model(self, X_valid, y_valid):
-        y_pred = self.model.predict(X_valid)
-        rmse = np.sqrt(mean_squared_error(y_valid, y_pred))
-        r2 = r2_score(y_valid, y_pred)
-
-        print(f"Validation RMSE: {rmse}")
-        print(f"Validation R²: {r2}")
-
-    def split(self, X):
-        type1_features = pd.get_dummies(self.type1)
-        type1_features = type1_features.reindex(columns=X.columns, fill_value=0)
-        predictions = self.model.predict(type1_features)
-
-        self.type1['Rate1'] = predictions[:, 0] * self.type1['people']
-        self.type1['Rate2'] = predictions[:, 1] * self.type1['people']
-        self.type1['Rate3'] = predictions[:, 2] * self.type1['people']
-        return self.type1
+        self.y_pred = self.model.predict(X_valid)
+        return mean_absolute_error(y_valid, self.y_pred), r2_score(y_valid, self.y_pred), np.sqrt(np.mean((y_valid - self.y_pred) ** 2))
