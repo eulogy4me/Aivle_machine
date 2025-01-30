@@ -1,4 +1,4 @@
-import models
+from models.hee import ModelTrainer
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -9,7 +9,7 @@ if __name__ == "__main__":
     RANDOM_STATE=42
     dfpath = os.getcwd() + "/data/data.csv"
     modelpath = os.getcwd() + "/main.pkl"
-    trainer = models.hee.ModelTrainer()
+    trainer = ModelTrainer()
     df = pd.read_csv(dfpath)
     
     df[['gu', 'ro']] = df['Address'].str.split(' ', expand=True).iloc[:, :2]
