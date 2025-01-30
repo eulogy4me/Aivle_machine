@@ -32,9 +32,10 @@ if __name__ == "__main__":
         ],
         inplace=True
     )
-    
+    supply_type = df['Supply_type']
     df = pd.get_dummies(data=df)
     df['Qty'] = qty
+    df['Supply_type'] = supply_type
     X = df.drop(columns='Qty')
     y = df['Qty']
 
