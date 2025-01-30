@@ -43,7 +43,7 @@ if __name__ == "__main__":
     smote = SMOTE(sampling_strategy='auto', random_state=42)
     X, y = smote.fit_resample(X, y)
     
-    df = pd.DataFrame(X, columns=X.columns)
+    df = pd.DataFrame(X, columns=X.columns).copy()
     df['Cutline_rate'] = y
     
     qty = (3 - df['Cutline_rate']) * 20 + df['Cutline_score']
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     
     df.drop(
         columns=[
-            'Cutline_rate','Cutline_score'
+            'Cutline_rate', 'Cutline_score'
         ],
         inplace=True
     )
@@ -59,23 +59,30 @@ if __name__ == "__main__":
     X = df.drop(columns=['Qty'])
     y = df['Qty']
     
-    X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.2)
-    
+    X_train_valid, X_test, y_train_valid, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_train_valid, y_train_valid, test_size=0.176, random_state=42) 
+
     best_score = float("inf")
 
-    for lr in np.linspace(0.007, 0.1, 5):
+    for lr in np.linspace(0.01, 0.1, 5):
         for depth in range(6, 13):
-            print(f"Training : lr={lr:.3f}, depth={depth}")
+            print(f"Training: lr={lr:.3f}, depth={depth}")
 
             trainer.train_model(X_train, y_train, X_valid, y_valid, lr, depth)
-            mae, r2 , rmse = trainer.evaluate_model(X_valid, y_valid)
+
+            mae, r2, rmse = trainer.evaluate_model(X_valid, y_valid)
             print(f"Val -> RMSE: {rmse:.4f}, MAE: {mae:.4f}, R²: {r2:.4f}")
 
             if rmse < best_score:
                 best_score = rmse
                 trainer.save(modelpath)
-                print(f"best model -> RMSE: {best_score:.4f}")
-    
+                print(f"Best model -> RMSE: {best_score:.4f}")
+
+    mae_test, r2_test, rmse_test = trainer.evaluate_model(X_test, y_test)
+    print(f"Test RMSE: {rmse_test:.4f}")
+    print(f"Test MAE: {mae_test:.4f}")
+    print(f"Test R²: {r2_test:.4f}")
+
     df['Qty_pred'] = np.round(trainer.model.predict(X)).astype(int)
     df.to_csv(os.getcwd() + "/data/data_fn.csv")
     print(df[['Qty', 'Qty_pred']].head())
