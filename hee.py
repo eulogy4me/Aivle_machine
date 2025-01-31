@@ -59,7 +59,7 @@ def process_supply_type(value):
 
 if __name__ == "__main__":
     RANDOM_STATE = 42
-    modelpath = os.getcwd() + "/main.pkl"
+    modelpath = os.getcwd() + "/pkl/main.pkl"
     df = pd.read_csv(os.getcwd() + "/data/data.csv")
     trainer = ModelTrainer()
     

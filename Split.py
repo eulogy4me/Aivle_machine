@@ -15,7 +15,7 @@ def process_supply_type(value):
 
 if __name__ == "__main__":
     dfpath = os.getcwd() + "/data/data.csv"
-    modelpath = os.getcwd() + "/spliter.pkl"
+    modelpath = os.getcwd() + "/pkl/spliter.pkl"
 
     df = pd.read_csv(dfpath)
     trainer = ModelTrainer()
@@ -48,14 +48,6 @@ if __name__ == "__main__":
     df = pd.get_dummies(df)
     df['Cutline_rate'] = cutline_rate
     df['Supply_type'] = supply_type
-    X = df.drop(columns=['Cutline_rate'])
-    y = df['Cutline_rate']
-
-    # smote = SMOTE(sampling_strategy='auto', random_state=42)
-    # X_resampled, y_resampled = smote.fit_resample(X, y)
-
-    # df = pd.DataFrame(X_resampled, columns=X.columns)
-    # df['Cutline_rate'] = y_resampled
 
     X = df.drop(columns=['Rate1_ratio', 'Rate2_ratio', 'Rate3_ratio'])
     y = df[['Rate1_ratio', 'Rate2_ratio', 'Rate3_ratio']]
@@ -64,8 +56,8 @@ if __name__ == "__main__":
 
     best_score = float("inf")
 
-    for lr in np.linspace(0.001, 0.1, 10):
-        for depth in range(2, 16):
+    for lr in np.linspace(0.001, 0.1, 50):
+        for depth in range(7, 16):
             print(f"Training model: lr={lr:.3f}, depth={depth}")
 
             trainer.train_model(X_train, y_train, X_valid, y_valid, lr, depth)

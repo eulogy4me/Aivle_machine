@@ -6,3 +6,4 @@ store.json
 *.pkl
 tempCodeRunnerFile.py
 catboost_info/
+pkl/
