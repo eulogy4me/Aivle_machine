@@ -1,5 +1,7 @@
 from models.hee import ModelTrainer
-from imblearn.over_sampling import SMOTE
+from imblearn.over_sampling import BorderlineSMOTE
+from imblearn.combine import SMOTETomek
+from imblearn.under_sampling import TomekLinks
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -28,10 +30,8 @@ def preprocess(df, smoth=True):
     if smoth == True:
         X = df.drop(columns=['Cutline_rate'])
         y = df['Cutline_rate']
-
-        smote = SMOTE(sampling_strategy='auto', random_state=42)
-        X, y = smote.fit_resample(X, y)
-        
+        smoteto = SMOTETomek(tomek=TomekLinks(sampling_strategy='majority'))
+        X, y = smoteto.fit_resample(X, y)
         df = pd.DataFrame(X, columns=X.columns).copy()
         df['Cutline_rate'] = y
     
@@ -79,8 +79,8 @@ if __name__ == "__main__":
 
     best_score = float("inf")
 
-    for lr in np.linspace(0.01, 0.1, 5):
-        for depth in range(6, 13):
+    for lr in np.linspace(0.0001, 0.0005, 5):
+        for depth in range(1, 5):
             print(f"Training: lr={lr:.3f}, depth={depth}")
 
             trainer.train_model(X_train, y_train, X_valid, y_valid, lr, depth)
