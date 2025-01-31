@@ -8,6 +8,8 @@ from sklearn.model_selection import train_test_split
 import os
 
 def preprocess(df, smoth=True):
+    df = df[df['Gender'] == 2]
+    df = df[df['Shared'] == 0]
     df[['gu', 'ro']] = df['Address'].str.split(' ', expand=True).iloc[:, :2]
     df['Supply_type'] = df['Supply_type'].apply(process_supply_type).astype(int)
     cutline_rate = df['Cutline_rate']
