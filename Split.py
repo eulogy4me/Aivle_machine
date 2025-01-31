@@ -51,11 +51,11 @@ if __name__ == "__main__":
     X = df.drop(columns=['Cutline_rate'])
     y = df['Cutline_rate']
 
-    smote = SMOTE(sampling_strategy='auto', random_state=42)
-    X_resampled, y_resampled = smote.fit_resample(X, y)
+    # smote = SMOTE(sampling_strategy='auto', random_state=42)
+    # X_resampled, y_resampled = smote.fit_resample(X, y)
 
-    df = pd.DataFrame(X_resampled, columns=X.columns)
-    df['Cutline_rate'] = y_resampled
+    # df = pd.DataFrame(X_resampled, columns=X.columns)
+    # df['Cutline_rate'] = y_resampled
 
     X = df.drop(columns=['Rate1_ratio', 'Rate2_ratio', 'Rate3_ratio'])
     y = df[['Rate1_ratio', 'Rate2_ratio', 'Rate3_ratio']]

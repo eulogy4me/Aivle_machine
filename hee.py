@@ -5,21 +5,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 import os
 
-def process_supply_type(value):
-    try:
-        num = float(value)
-        return round(num)
-    except ValueError:
-        num_str = ''.join(filter(str.isdigit, value))
-        return int(num_str) if num_str else None
-
-if __name__ == "__main__":
-    RANDOM_STATE = 42
-    dfpath = os.getcwd() + "/data/data.csv"
-    modelpath = os.getcwd() + "/main.pkl"
-    trainer = ModelTrainer()
-    df = pd.read_csv(dfpath)
-    
+def preprocess(df, smoth=True):
     df[['gu', 'ro']] = df['Address'].str.split(' ', expand=True).iloc[:, :2]
     df['Supply_type'] = df['Supply_type'].apply(process_supply_type).astype(int)
     cutline_rate = df['Cutline_rate']
@@ -35,16 +21,19 @@ if __name__ == "__main__":
     )
     
     df = pd.get_dummies(df)
+    
     df['Cutline_rate'] = cutline_rate
     df['Supply_type'] = supply_type
-    X = df.drop(columns=['Cutline_rate'])
-    y = df['Cutline_rate']
-
-    smote = SMOTE(sampling_strategy='auto', random_state=42)
-    X, y = smote.fit_resample(X, y)
     
-    df = pd.DataFrame(X, columns=X.columns).copy()
-    df['Cutline_rate'] = y
+    if smoth == True:
+        X = df.drop(columns=['Cutline_rate'])
+        y = df['Cutline_rate']
+
+        smote = SMOTE(sampling_strategy='auto', random_state=42)
+        X, y = smote.fit_resample(X, y)
+        
+        df = pd.DataFrame(X, columns=X.columns).copy()
+        df['Cutline_rate'] = y
     
     qty = (3 - df['Cutline_rate']) * 20 + df['Cutline_score']
     df['Qty'] = qty
@@ -55,12 +44,38 @@ if __name__ == "__main__":
         ],
         inplace=True
     )
-    
+        
     X = df.drop(columns=['Qty'])
     y = df['Qty']
+    return X,y
+
+def process_supply_type(value):
+    try:
+        num = float(value)
+        return round(num)
+    except ValueError:
+        num_str = ''.join(filter(str.isdigit, value))
+        return int(num_str) if num_str else None
+
+if __name__ == "__main__":
+    RANDOM_STATE = 42
+    modelpath = os.getcwd() + "/main.pkl"
+    df = pd.read_csv(os.getcwd() + "/data/data.csv")
+    trainer = ModelTrainer()
     
-    X_train_valid, X_test, y_train_valid, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
-    X_train, X_valid, y_train, y_valid = train_test_split(X_train_valid, y_train_valid, test_size=0.176, random_state=42) 
+    df_train_valid, df_test = train_test_split(df, test_size=0.15, random_state=42)
+    X_train_valid, y_train_valid = preprocess(df_train_valid)
+    X_test, y_test = preprocess(df_test, False)
+    X_train, X_valid, y_train, y_valid = train_test_split(
+        X_train_valid, y_train_valid, test_size=0.176, random_state=42
+    )
+
+    all_columns = X_train.columns.union(X_valid.columns).union(X_test.columns)
+    sorted_columns = sorted(all_columns)
+
+    X_train = X_train.reindex(columns=sorted_columns, fill_value=0)
+    X_valid = X_valid.reindex(columns=sorted_columns, fill_value=0)
+    X_test = X_test.reindex(columns=sorted_columns, fill_value=0)
 
     best_score = float("inf")
 
@@ -82,7 +97,3 @@ if __name__ == "__main__":
     print(f"Test RMSE: {rmse_test:.4f}")
     print(f"Test MAE: {mae_test:.4f}")
     print(f"Test R²: {r2_test:.4f}")
-
-    df['Qty_pred'] = np.round(trainer.model.predict(X)).astype(int)
-    df.to_csv(os.getcwd() + "/data/data_fn.csv")
-    print(df[['Qty', 'Qty_pred']].head())
