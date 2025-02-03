@@ -1,73 +1,43 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import keras
-import os
 import joblib
 
-from imblearn.over_sampling import RandomOverSampler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import *
-from catboost import CatBoostRegressor
+from sklearn.metrics import mean_absolute_error , r2_score
+from catboost import CatBoostRegressor, cv, Pool
 
 class ModelTrainer:
-    def __init__(self, random_state=0):
-        self.random_state = random_state
+    def __init__(self):
         self.model = None
+        self.result = None
         
-    def save(self, filepath):
-        if self.model is not None:
-            joblib.dump(self.model, filepath)
-            print(f"Model saved {filepath}")
-        else:
-            print("No model to save")
-            
-    def load(self, filepath):
-        self.model = joblib.load(filepath)
-        print(f"Model loaded from {filepath}")
+    def save(self, path):
+        self.model.save_model(path)
 
-    def preprocess_data(self, filepath):
-        df = pd.read_csv(filepath)
-        df[['gu', 'ro']] = df['Address'].str.split(' ', expand=True).iloc[:, :2]
-        df['Supply_type'] = df['Supply_type'].str.replace(r'\D', '', regex=True)
-        qty = (3 - df['Cutline_rate']) * 10 + df['Cutline_score']
+    def load(self, path):
+        model=CatBoostRegressor()
+        self.model = model.load_model(path)
 
-        df.drop(
-            columns=[
-                'Name','Address', 'Latitude', 'Longitude', 'Infra_score',
-                'Gender','Shared','Quarter','Counts_supermarket','Counts_laundry',
-                'Counts_pharmacy','Cutline_rate','Cutline_score'
-            ],
-            inplace=True
-        )
-
-        df = pd.get_dummies(data=df)
-        df['Qty'] = qty
-
-        return df
-
-    def train_model(self, X, y, X_valid, y_valid):
+    def train_model(self, X_train, y_train, param_grid):                  
         self.model = CatBoostRegressor(
-            iterations=1000,
-            depth=6,
-            learning_rate=0.1,
             loss_function='RMSE',
             verbose=100,
             task_type='CPU'
         )
-
-        self.model.fit(
-            X, y,
-            eval_set=(X_valid, y_valid),
-            early_stopping_rounds=10,
-            use_best_model=True,
-            plot=True
+        
+        self.result = self.model.grid_search(
+            param_grid,
+            X=X_train,
+            y=y_train,
+            cv=5,
+            shuffle=True
         )
+        print("Params : ", self.result['params'])
+        print("Score  : ", self.result['cv_results'])
 
-    def evaluate_model(self, X_valid, y_valid):
-        y_pred = self.model.predict(X_valid)
+    def evaluate_model(self, X_test, y_test):
+        y_pred = self.model.predict(X_test)
         y_pred = np.round(y_pred).astype(int)
-        print('Score MAE:', mean_absolute_error(y_valid, y_pred))
-        print('Score R2:', r2_score(y_valid, y_pred))
+        print('Score MAE:', mean_absolute_error(y_test, y_pred))
+        print('Score R2:', r2_score(y_test, y_pred))
         return y_pred

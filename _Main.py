@@ -1,42 +1,63 @@
 from models.Main import ModelTrainer
-import pandas as pd
 from sklearn.model_selection import train_test_split
+from imblearn.over_sampling import SMOTE
 import os
+import pandas as pd
 
-if __name__ == "__main__":
-    RANDOM_STATE=42
-    dfpath = os.getcwd() + "/data/data.csv"
-    modelpath = os.getcwd() + "/main.pkl"
-    trainer = ModelTrainer(random_state=RANDOM_STATE)
-    trainer.load(filepath=modelpath)
-    df = pd.read_csv(dfpath)
-    
+def preprocess(df):
     df[['gu', 'ro']] = df['Address'].str.split(' ', expand=True).iloc[:, :2]
-    df['Supply_type'] = df['Supply_type'].str.replace(r'\D', '', regex=True)
-    qty = (3 - df['Cutline_rate']) * 10 + df['Cutline_score']
-
+    df['Supply_type'] =df['Supply_type'].str.extract('(\d+\.?\d*)').astype(float).astype(int)
+    cutline_rate = df['Cutline_rate']
+    supply_type = df['Supply_type']
     df.drop(
         columns=[
-            'Name', 'Address', 'Latitude', 'Longitude', 'Infra_score',
-            'Gender', 'Shared', 'Quarter', 'Counts_supermarket', 'Counts_laundry',
-            'Counts_pharmacy', 'Cutline_rate', 'Cutline_score'
+        'Name', 'Address', 'Latitude', 'Longitude','ro','Counts_daiso',
+        'Counts_supermarket', 'Counts_laundry', 'Counts_pharmacy',
+        'Counts_cafe','Quarter','Year'
         ],
-        inplace=True
+        inplace = True
     )
-    
-    df = pd.get_dummies(data=df)
-    df['Qty'] = qty
-    X = df.drop(columns='Qty')
-    y = df['Qty']
-    
-    X_train, X_valid, y_train, y_valid = train_test_split(
-        X, y,
-        test_size=0.2,
-        random_state=RANDOM_STATE
-    )
+    df = pd.get_dummies(df)
+    df['Cutline_rate'] = cutline_rate
+    df['Supply_type'] = supply_type
 
-    y_pred = trainer.evaluate_model(X_valid, y_valid)
+    df_train, df_test = train_test_split(df, test_size=0.2, stratify=df['Cutline_rate'])
 
-    df['Qty_pred'] = trainer.model.predict(X)
-    df.to_csv(os.getcwd() + "/data/data_fn.csv")
-    print(df[['Qty', 'Qty_pred']].head())
+    qty_train = (3 - df_train['Cutline_rate']) * 11 + df_train['Cutline_score']
+    qty_test = (3 - df_test['Cutline_rate']) * 11 + df_test['Cutline_score']
+    df_train['Qty'] = qty_train
+    df_test['Qty'] = qty_test
+    
+    cols=['Cutline_rate','Cutline_score','Qty']
+    X_train=df_train.drop(columns=cols)
+    y_train=df_train['Qty']
+
+    X_test=df_test.drop(columns=cols)
+    y_test=df_test['Qty']
+    
+    return X_train, y_train, X_test, y_test
+    
+if __name__ == "__main__":
+    path = os.getcwd()
+    Trainer = ModelTrainer()
+    df = pd.read_csv(path + "/data/data.csv")
+    
+    X_train, y_train, X_test, y_test = preprocess(df)
+    
+    param_grid = {
+        'iterations': (500, 1000, 100),
+        'depth': (4, 12, 1),
+        'learning_rate': (0.01, 0.5, 0.05),
+        'l2_leaf_reg': (2, 10, 1),
+        'bagging_temperature': (1, 3, 1),
+        'random_strength': (1, 5, 1)
+    }
+    
+    Trainer.train_model(X_train,y_train,param_grid)
+    y_pred = Trainer.evaluate_model(X_test,y_test)
+    Trainer.save(path + "/pkl/main.cbm")
+    df['Qty_pred'] = pd.DataFrame(y_pred)
+    y_test.reset_index(drop=True,inplace=True )
+    df_compare=pd.concat([df,y_test],axis=1)
+    df_compare=df_compare.rename(columns={0:'Qty_pred'})
+    print(df_compare)
