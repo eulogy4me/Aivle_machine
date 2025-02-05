@@ -1,9 +1,11 @@
 .venv/
 data/*.csv
+datasets/*
 __pycache__/
 store.json
 *.pth
 *.pkl
+*.csv
 tempCodeRunnerFile.py
 catboost_info/
 pkl/

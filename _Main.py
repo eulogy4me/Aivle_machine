@@ -21,7 +21,7 @@ def preprocess(df):
     df['Cutline_rate'] = cutline_rate
     df['Supply_type'] = supply_type
 
-    df_train, df_test = train_test_split(df, test_size=0.2, stratify=df['Cutline_rate'])
+    df_train, df_test = train_test_split(df, test_size=0.2, stratify=df['Cutline_rate'], random_state=42)
 
     qty_train = (3 - df_train['Cutline_rate']) * 11 + df_train['Cutline_score']
     qty_test = (3 - df_test['Cutline_rate']) * 11 + df_test['Cutline_score']
@@ -39,9 +39,9 @@ def preprocess(df):
     
 if __name__ == "__main__":
     path = os.getcwd()
-    Trainer = ModelTrainer()
     df = pd.read_csv(path + "/data/data.csv")
-    
+    Trainer = ModelTrainer()
+
     X_train, y_train, X_test, y_test = preprocess(df)
     
     param_grid = {
@@ -56,8 +56,12 @@ if __name__ == "__main__":
     Trainer.train_model(X_train,y_train,param_grid)
     y_pred = Trainer.evaluate_model(X_test,y_test)
     Trainer.save(path + "/pkl/main.cbm")
+    
+    # Trainer.load(path + "/pkl/main.cbm")
+    # y_pred = Trainer.evaluate_model(X_test,y_test)
     df['Qty_pred'] = pd.DataFrame(y_pred)
-    y_test.reset_index(drop=True,inplace=True )
+    y_test.reset_index(drop=True,inplace=True)
     df_compare=pd.concat([df,y_test],axis=1)
     df_compare=df_compare.rename(columns={0:'Qty_pred'})
-    print(df_compare)
+    df_compare.to_csv(path + "/data/comp.csv")
+    
