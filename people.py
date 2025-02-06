@@ -40,7 +40,7 @@ if __name__ == "__main__":
     X, y, X_test, y_test, df = preprocess(df)
     
     param_grid = {
-        'iterations': (500, 1000, 100),
+        'iterations': (100, 1500, 500),
         'depth': (4, 12, 1),
         'learning_rate': (0.01, 0.5, 0.05),
         'l2_leaf_reg': (2, 10, 1),
@@ -49,8 +49,8 @@ if __name__ == "__main__":
     }
     
     Trainer.train_model(X,y,param_grid)
-    y_pred = Trainer.evaluate_model(X_test,y_test)
     Trainer.save(path + "/pkl/people.cbm")
+    Trainer.evaluate_model(X_test,y_test)
     
     X_full = df.drop(columns=['Units'])
     y_full_pred = Trainer.evaluate_model(X_full, None)
