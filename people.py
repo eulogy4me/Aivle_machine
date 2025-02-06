@@ -33,7 +33,7 @@ def preprocess(df:pd.DataFrame):
             'Name', 'Address', 'Latitude', 'Longitude','Gender','Shared',
             'ro', 'Counts_daiso', 'Counts_laundry', 'Counts_cafe',
             'Counts_supermarket', 'Counts_pharmacy', 'Counts_convstore', 'Infra_score',
-            'Cutline_score','Qty'
+            'Cutline_score'
         ],
         inplace=True
     )
@@ -59,22 +59,22 @@ if __name__ == "__main__":
     X, y, X_test, y_test, df = preprocess(df)
     
     param_grid = {
-        'iterations': (100, 1500, 500),
-        'depth': (4, 12, 2),
-        'learning_rate': (0.1, 0.001, 0.01),
-        'l2_leaf_reg': (2, 10, 2),
-        'bagging_temperature': (1, 3, 1),
-        'random_strength': (1, 5, 1)
+        'iterations': [100, 500, 1000, 1500],
+        'depth': [4, 8, 12],
+        'learning_rate': [0.1, 0.01, 0.001],
+        'l2_leaf_reg': [2, 6, 10],
+        'bagging_temperature': [1, 3],
+        'random_strength': [1, 3, 5]
     }
     
     Trainer.train_model(X,y,param_grid)
     Trainer.save(path + "/pkl/people.cbm")
-    Trainer.load(path + "/pkl/qty.cbm")
+    Trainer.load(path + "/pkl/people.cbm")
     expected_features = Trainer.model.feature_names_
     Trainer.evaluate_model(X_test,y_test)
     
     X_full = df.drop(columns=['Units'])
-    X_full = align_features(X_full, expected_features)
+    X_full = align_features(df, expected_features)
 
     y_full_pred = Trainer.evaluate_model(X_full, None)
 
