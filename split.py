@@ -44,7 +44,7 @@ def preprocess(df: pd.DataFrame):
 
     df = pd.get_dummies(df)
 
-    df_train, df_test = train_test_split(df, test_size=0.2, stratify=df['Cutline_rate'], random_state=42)
+    df_train, df_test = train_test_split(df, test_size=0.2, stratify=df['Cutline_rate'])
 
     df.drop(columns=['Cutline_rate'], inplace=True)
 
