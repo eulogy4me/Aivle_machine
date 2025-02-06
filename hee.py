@@ -8,26 +8,24 @@ from sklearn.model_selection import train_test_split
 import os
 
 def preprocess(df, smoth=True):
-    df = df[df['Gender'] == 2]
-    df = df[df['Shared'] == 0]
     df[['gu', 'ro']] = df['Address'].str.split(' ', expand=True).iloc[:, :2]
-    df['Supply_type'] =df['Supply_type'].str.extract('(\d+\.?\d*)').astype(float).astype(int)
+    df['Supply_type'] = df['Supply_type'].str.extract(r'(\d+)').astype(float, errors='ignore').fillna(0).astype(int)
+    df['Units'] = pd.to_numeric(df['Units'], errors='coerce').fillna(0).astype(int)
+    df['Distance'] = pd.to_numeric(df['Distance'], errors='coerce').fillna(0).astype(int)
     cutline_rate = df['Cutline_rate']
-    supply_type = df['Supply_type']
 
     df.drop(
         columns=[
-            'Name', 'Address', 'Latitude', 'Longitude', 'Infra_score',
-            'Gender', 'Shared', 'Quarter', 'Counts_supermarket', 'Counts_laundry',
-            'Counts_pharmacy'
+            'Name', 'Address', 'Latitude', 'Longitude',
+            'ro', 'Counts_daiso', 'Counts_laundry', 'Counts_cafe',
+            'Counts_supermarket', 'Counts_pharmacy', 'Counts_convstore', 'Infra_score',
         ],
         inplace=True
     )
-    
+
     df = pd.get_dummies(df)
     
     df['Cutline_rate'] = cutline_rate
-    df['Supply_type'] = supply_type
     
     if smoth == True:
         X = df.drop(columns=['Cutline_rate'])

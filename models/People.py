@@ -1,10 +1,7 @@
-import pandas as pd
 import numpy as np
-import joblib
 
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error , r2_score
-from catboost import CatBoostRegressor, cv, Pool
+from catboost import CatBoostRegressor, cv
 
 class ModelTrainer:
     def __init__(self):
@@ -37,7 +34,7 @@ class ModelTrainer:
 
     def evaluate_model(self, X_test, y_test):
         y_pred = self.model.predict(X_test)
-        y_pred = np.round(y_pred).astype(int)
-        print('Score MAE:', mean_absolute_error(y_test, y_pred))
-        print('Score R2:', r2_score(y_test, y_pred))
-        return y_pred
+        if y_test != None:
+            print('Score MAE:', mean_absolute_error(y_test, y_pred))
+            print('Score R2:', r2_score(y_test, y_pred))
+        return np.round(y_pred).astype(int)
