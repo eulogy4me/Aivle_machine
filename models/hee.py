@@ -37,16 +37,16 @@ class ModelTrainer:
             "early_stopping_rounds": es,
             "use_best_model": True,
             "l2_leaf_reg": 10,
-            "bagging_temperature": 1.0,  # Dropout-like 효과
-            "subsample": 0.8,  # 데이터 샘플링 추가
-            "random_strength": 2,  # 랜덤 노이즈 추가
+            "bagging_temperature": 1.0,
+            "subsample": 0.8,
+            "random_strength": 2,
             "feature_border_type": "Median",
         }
 
         cv_data = cv(
             train_data,
             params,
-            fold_count=5,  # 교차 검증 강화를 위해 fold 개수 증가
+            fold_count=5,
             plot=True
         )
 

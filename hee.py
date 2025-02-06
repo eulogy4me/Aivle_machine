@@ -11,7 +11,7 @@ def preprocess(df, smoth=True):
     df = df[df['Gender'] == 2]
     df = df[df['Shared'] == 0]
     df[['gu', 'ro']] = df['Address'].str.split(' ', expand=True).iloc[:, :2]
-    df['Supply_type'] = df['Supply_type'].apply(process_supply_type).astype(int)
+    df['Supply_type'] =df['Supply_type'].str.extract('(\d+\.?\d*)').astype(float).astype(int)
     cutline_rate = df['Cutline_rate']
     supply_type = df['Supply_type']
 
@@ -50,14 +50,6 @@ def preprocess(df, smoth=True):
     X = df.drop(columns=['Qty'])
     y = df['Qty']
     return X,y
-
-def process_supply_type(value):
-    try:
-        num = float(value)
-        return round(num)
-    except ValueError:
-        num_str = ''.join(filter(str.isdigit, value))
-        return int(num_str) if num_str else None
 
 if __name__ == "__main__":
     RANDOM_STATE = 42
