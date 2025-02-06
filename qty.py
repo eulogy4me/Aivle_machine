@@ -62,7 +62,7 @@ if __name__ == "__main__":
     param_grid = {
         'iterations': (100, 1500, 500),
         'depth': (4, 12, 2),
-        'learning_rate': (0.1, 0.001, -0.01),
+        'learning_rate': (0.1, 0.001, 0.01),
         'l2_leaf_reg': (2, 10, 2),
         'bagging_temperature': (1, 3, 1),
         'random_strength': (1, 5, 1)
