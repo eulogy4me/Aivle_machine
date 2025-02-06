@@ -50,10 +50,10 @@ if __name__ == "__main__":
     }
     
     Trainer.train_model(X,y,param_grid)
-    Trainer.save(path + "/pkl/main.cbm")
+    Trainer.save(path + "/pkl/qty.cbm")
     Trainer.evaluate_model(X_test,y_test)
     
-    # Trainer.load(path + "/pkl/main.cbm")
+    # Trainer.load(path + "/pkl/qty.cbm")
     # y_pred = Trainer.evaluate_model(X_test,y_test)
 
     X_full = df.drop(columns=['Qty'])
@@ -61,4 +61,4 @@ if __name__ == "__main__":
 
     df['Qty_pred'] = y_full_pred
 
-    df.to_csv(os.getcwd() + "/rslt/main.csv", index=False)
+    df.to_csv(os.getcwd() + "/rslt/qty.csv", index=False)
