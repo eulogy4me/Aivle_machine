@@ -58,17 +58,17 @@ if __name__ == "__main__":
 
     X, y, X_test, y_test, df = preprocess(df)
     
-    param_grid = {
-        'iterations': [100, 500, 1000, 1500],
-        'depth': [4, 8, 12],
-        'learning_rate': [0.1, 0.01, 0.001],
-        'l2_leaf_reg': [2, 6, 10],
-        'bagging_temperature': [1, 3],
-        'random_strength': [1, 3, 5]
-    }
+    # param_grid = {
+    #     'iterations': [100, 500, 1000, 1500],
+    #     'depth': [4, 8, 12],
+    #     'learning_rate': [0.1, 0.01, 0.001],
+    #     'l2_leaf_reg': [2, 6, 10],
+    #     'bagging_temperature': [1, 3],
+    #     'random_strength': [1, 3, 5]
+    # }
     
-    Trainer.train_model(X,y,param_grid)
-    Trainer.save(path + "/pkl/people.cbm")
+    # Trainer.train_model(X,y,param_grid)
+    # Trainer.save(path + "/pkl/people.cbm")
     Trainer.load(path + "/pkl/people.cbm")
     expected_features = Trainer.model.feature_names_
     Trainer.evaluate_model(X_test,y_test)
