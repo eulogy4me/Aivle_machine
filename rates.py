@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from models.Rates import ModelTrainer
+from models.Multi import Model
 from sklearn.model_selection import train_test_split
 
 def align_features(df: pd.DataFrame, expected_features: list) -> pd.DataFrame:
@@ -19,13 +19,13 @@ def preprocess(df: pd.DataFrame):
     df['Rate1_ratio'] = df['Rate1'] / df['people']
     df['Rate2_ratio'] = df['Rate2'] / df['people']
     df['Rate3_ratio'] = df['Rate3'] / df['people']
-    
+
     df.drop(
         columns=[
             'Name', 'Address', 'Latitude', 'Longitude','Gender','Shared',
             'Counts_daiso', 'Counts_laundry', 'Counts_cafe',
             'Counts_supermarket', 'Counts_pharmacy', 'Counts_convstore', 'Infra_score',
-            'Cutline_score', 'Rate1', 'Rate2', 'Rate3'
+            'Cutline_score', 'Rate1', 'Rate2', 'Rate3','people'
         ],
         inplace=True
     )
@@ -47,27 +47,27 @@ def preprocess(df: pd.DataFrame):
 if __name__ == "__main__":
     path = os.getcwd()
     df = pd.read_csv(path + "/data/data.csv")
-    Trainer = ModelTrainer()
+    MODEL = Model()
     param_grid = {
         'iterations': [100],
         'depth': [4, 8, 12],
-        'learning_rate': [0.1, 0.01, 0.01],
+        'learning_rate': [0.01, 0.1, 0.5],
         'l2_leaf_reg': [2, 6, 10],
         'bagging_temperature': [1, 3],
         'random_strength': [1, 3, 5]
     }
     
     X, y, X_test, y_test, df = preprocess(df)
-    Trainer.train_model(X,y,param_grid)
-    Trainer.save(path + "/pkl/rate.cbm")
-    expected_features = Trainer.model.feature_names_
+    MODEL.train(X,y,param_grid)
+    MODEL.save(path + "/pkl/rate.cbm")
+    expected_features = MODEL.model.feature_names_
 
-    Trainer.evaluate_model(X_test, y_test)
+    MODEL.evaluate(X_test, y_test)
 
     X_full = df.drop(columns=['Rate1_ratio', 'Rate2_ratio', 'Rate3_ratio'])
     X_full = align_features(X_full, expected_features)
 
-    y_full_pred = Trainer.evaluate_model(X_full, None)
+    y_full_pred = MODEL.evaluate(X_full, None)
 
     df['Rate1'] = y_full_pred[:, 0] * df['people']
     df['Rate2'] = y_full_pred[:, 1] * df['people']

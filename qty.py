@@ -1,4 +1,4 @@
-from models.Qty import ModelTrainer
+from models.Single import Model
 from sklearn.model_selection import train_test_split
 import os
 import pandas as pd
@@ -55,7 +55,7 @@ def preprocess(df:pd.DataFrame):
 if __name__ == "__main__":
     path = os.getcwd()
     df = pd.read_csv(path + "/data/data.csv")
-    Trainer = ModelTrainer()
+    MODEL = Model()
 
     X, y, X_test, y_test, df = preprocess(df)
     
@@ -68,20 +68,19 @@ if __name__ == "__main__":
         'random_strength': (1, 5, 1)
     }
     
-    Trainer.train_model(X,y,param_grid)
-    Trainer.save(path + "/pkl/qty.cbm")
-    Trainer.load(path + "/pkl/qty.cbm")
-    expected_features = Trainer.model.feature_names_
+    MODEL.train(X,y,param_grid)
+    MODEL.save(path + "/pkl/qty.cbm")
+    MODEL.load(path + "/pkl/qty.cbm")
+    expected_features = MODEL.model.feature_names_
 
-    Trainer.evaluate_model(X_test,y_test)
+    MODEL.evaluate(X_test,y_test)
 
     X_full = df.drop(columns=['Qty'])
     X_full = align_features(X_full, expected_features)
-    y_full_pred = Trainer.evaluate_model(X_full, None)
+    y_full_pred = MODEL.evaluate(X_full, None)
 
     df['Qty_pred'] = y_full_pred
 
     df.to_csv(os.getcwd() + "/rslt/qty.csv", index=False)
-    
     
     

@@ -31,7 +31,7 @@ if __name__ == "__main__":
     df['Units'] = pd.to_numeric(df['Units'], errors='coerce').astype(int)
     df['Distance'] = pd.to_numeric(df['Distance'], errors='coerce').astype(int)
     df.drop(columns=[
-        'Name', 'Address', 'Latitude', 'Longitude','Gender','Shared'
+        'Name', 'Address', 'Latitude', 'Longitude','Gender','Shared', 'Infra_score'
         ], inplace=True
     )
     
@@ -39,7 +39,7 @@ if __name__ == "__main__":
     
     X, y , X_test, y_test, df_temp = preprocess(df, targets)
 
-    PEOPLE = models.People.ModelTrainer()
+    PEOPLE = models.Single.ModelTrainer()
     PEOPLE.load(path + "/pkl/people.cbm")
 
     pred_results = get_pred(df_temp, PEOPLE, targets)
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     targets = ['Rate1','Rate2','Rate3']
     X, y , X_test, y_test, df_temp = preprocess(df, targets)
 
-    RATES = models.Rates.ModelTrainer()
+    RATES = models.Multi.ModelTrainer()
     RATES.load(path + "/pkl/rates.cbm")
     pred_results = get_pred(df_temp, RATES, targets)
     for i, target in enumerate(targets):
