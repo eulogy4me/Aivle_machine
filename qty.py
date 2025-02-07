@@ -23,10 +23,10 @@ def align_features(df: pd.DataFrame, expected_features: list) -> pd.DataFrame:
     return df
 
 def preprocess(df:pd.DataFrame):
-    df[['gu', 'ro']] = df['Address'].str.split(' ', expand=True).iloc[:, :2]
-    df['Supply_type'] = df['Supply_type'].str.extract(r'(\d+)').astype(float, errors='ignore').fillna(0).astype(int)
-    df['Units'] = pd.to_numeric(df['Units'], errors='coerce').fillna(0).astype(int)
-    df['Distance'] = pd.to_numeric(df['Distance'], errors='coerce').fillna(0).astype(int)
+    df['gu'] = df['Address'].str.split(' ', expand=True).iloc[:, :1]
+    df['Supply_type'] = df['Supply_type'].str.extract(r'(\d+)').astype(float).astype(int)
+    df['Units'] = pd.to_numeric(df['Units'], errors='coerce').astype(int)
+    df['Distance'] = pd.to_numeric(df['Distance'], errors='coerce').astype(int)
     df['Qty'] = (3 - df['Cutline_rate']) * 11 + df['Cutline_score']
 
     df.drop(
@@ -34,7 +34,7 @@ def preprocess(df:pd.DataFrame):
             'Name', 'Address', 'Latitude', 'Longitude','Gender','Shared',
             'ro', 'Counts_daiso', 'Counts_laundry', 'Counts_cafe',
             'Counts_supermarket', 'Counts_pharmacy', 'Counts_convstore', 'Infra_score',
-            'Cutline_score'
+            'Cutline_score','Rate1','Rate2','Rate3'
         ],
         inplace=True
     )
@@ -82,3 +82,6 @@ if __name__ == "__main__":
     df['Qty_pred'] = y_full_pred
 
     df.to_csv(os.getcwd() + "/rslt/qty.csv", index=False)
+    
+    
+    

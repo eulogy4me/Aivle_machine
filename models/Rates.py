@@ -33,7 +33,7 @@ class ModelTrainer:
 
     def evaluate_model(self, X_test, y_test):
         y_pred = self.model.predict(X_test)
-        if y_test is not None:
+        if y_test is not None and len(y_test) > 0:
             print('Score MAE:', mean_absolute_error(y_test, y_pred))
             print('Score R2:', r2_score(y_test, y_pred))
         return y_pred
