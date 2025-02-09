@@ -1,6 +1,6 @@
 .venv/
-data/*.csv
-datasets/*
+data/
+datasets/
 __pycache__/
 store.json
 *.pth

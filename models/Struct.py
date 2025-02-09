@@ -27,7 +27,8 @@ class RoomDataset(Dataset):
             17: 800,   # 발코니
             18: 500,   # 화장실
             19: 800,   # 실외기실
-            20: 1000    # 드레스룸
+            20: 1000,  # 드레스룸
+            22: 500    # 기타
         }
 
         self.object_weights = {
@@ -190,8 +191,8 @@ class Model:
         gc.collect()
         torch.cuda.empty_cache()
 
-    def evaluate(self, path):
-        self.model.load_state_dict(torch.load(path))
+    def evaluate(self, model_path, csv_path):
+        self.model.load_state_dict(torch.load(model_path))
         self.model.eval()
         test_loss = 0.0
         predictions = []
@@ -221,7 +222,7 @@ class Model:
         print(f"MSE : {mse:.4f}")
         print(f"MAE : {mae:.4f}")
 
-        with open('struct.csv', 'w', newline='') as file:
+        with open(csv_path, 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(["File Name", "Predicted Score", "True Score"])
             for fname, pred, true in zip(file_names, predictions, true_scores):
