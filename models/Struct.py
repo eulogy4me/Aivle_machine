@@ -9,6 +9,8 @@ import os
 import json
 import numpy as np
 import csv
+import networkx as nx
+import gc
 
 class RoomDataset(Dataset):
     def __init__(self, img_dir, label_dir, transform=None):
@@ -17,8 +19,24 @@ class RoomDataset(Dataset):
         self.transform = transform
         self.img_files = [f for f in os.listdir(img_dir) if f.endswith((".jpg", ".png"))]
 
-        self.room_weights = {13: 2.0, 14: 2.0, 15: 1.5, 16: 1.0, 17: 1.5, 18: 1.0, 19: 0.5, 20: 1.5}
-        self.object_weights = {4: 0.3, 5: 0.3, 6: 0.9, 7: 0.9, 8: 0.5}
+        self.room_weights = {
+            13: 2.0,  # 거실
+            14: 2.5,  # 침실
+            15: 2.0,  # 주방
+            16: 1.5,  # 현관
+            17: 1.5,  # 발코니
+            18: 2.0,  # 화장실
+            19: 1.0,  # 실외기실
+            20: 2.0   # 드레스룸
+        }
+
+        self.object_weights = {
+            4: 0.5,   # 변기
+            5: 0.5,   # 세면대
+            6: 1.0,   # 싱크대
+            7: 1.0,   # 욕조
+            8: 0.7    # 가스레인지
+        }
 
     def __len__(self):
         return len(self.img_files)
@@ -28,7 +46,7 @@ class RoomDataset(Dataset):
         img_path = os.path.join(self.img_dir, img_name)
         label_path = os.path.join(self.label_dir, img_name.replace(".jpg", ".json").replace(".png", ".json"))
 
-        image = Image.open(img_path).convert("L")
+        image = Image.open(img_path).convert("RGB")
         image = image.resize((640, 640), Image.Resampling.LANCZOS)
 
         with open(label_path, 'r') as f:
@@ -42,54 +60,83 @@ class RoomDataset(Dataset):
         return image, torch.tensor([score], dtype=torch.float32), img_name
 
     def calculate_score(self, label_data):
-        room_score = sum(self.room_weights.get(a['category_id'], 0) for a in label_data['annotations'])
-        object_score = sum(self.object_weights.get(a['category_id'], 0) * a.get("count", 1) for a in label_data['annotations'])
-
-        final_score = (room_score * 0.5 + object_score * 0.5) / 15
-        return min(final_score, 1)
+        room_score = 0.0
+        object_score = 0.0
+        
+        # 이미지 전체 면적
+        image_area = float(label_data['images'][0]['width']) * float(label_data['images'][0]['height'])
+        
+        for a in label_data['annotations']:
+            category_id = a['category_id']
+            
+            # 방에 대한 점수: 이미지 전체 대비 방이 차지하는 비율을 그대로 사용
+            if category_id in self.room_weights:
+                room_score += self.room_weights[category_id] * (a['area'] / image_area)
+            
+            # 객체에 대한 점수: count 정보가 있으면 그 수만큼 가중치 곱
+            if category_id in self.object_weights:
+                object_score += self.object_weights[category_id] * a.get("count", 1)
+        
+        # 최종 점수: 두 요소를 가중합 (raw score, 0~1 스케일 강제 없음)
+        final_score = room_score * 0.7 + object_score * 0.3
+        return final_score
 
 class RoomQualityModel(nn.Module):
     def __init__(self):
         super(RoomQualityModel, self).__init__()
-        self.backbone = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.IMAGENET1K_V1)
-        self.backbone.features[0][0] = nn.Conv2d(1, 32, kernel_size=3, stride=2, padding=1, bias=False)
+        self.backbone = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
         
-        self.backbone.classifier = nn.Sequential(
-            nn.Linear(1280, 512),
+        self.backbone.fc = nn.Sequential(
+            nn.Linear(2048, 512),
             nn.BatchNorm1d(512),
             nn.ReLU(),
-            nn.Dropout(0.3),
+            nn.Dropout(0.5),
             nn.Linear(512, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(128, 1),
-            nn.Sigmoid()
+            nn.Dropout(0.5),
+            nn.Linear(128, 1)
         )
 
     def forward(self, x):
-        return torch.clamp(self.backbone(x), 0, 1)
+        return self.backbone(x)
 
-class ModelTrainer:
+class Model:
     def __init__(self, dataset_path):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.learning_rate = 0.001
+        self.learning_rate = 0.01
         self.batch_size = 16
-        self.epochs = 20
-        self.patience = 5
+        self.epochs = 5
+        self.patience = 2
 
         self.model = RoomQualityModel().to(self.device)
         self.criterion = nn.MSELoss()
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=1e-5)
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=3)
+        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=1e-4)
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.1, patience=2)
 
-        self.data_transforms = transforms.Compose([
-            transforms.Resize((640, 640)),
-            # transforms.RandomHorizontalFlip(),
-            # transforms.RandomRotation(10),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5], std=[0.5])
-        ])
+        self.data_transforms = {
+            'train': transforms.Compose([
+                transforms.Resize(640),
+                transforms.CenterCrop(640),
+                # transforms.RandomHorizontalFlip(),
+                # transforms.RandomRotation(10),
+                # transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ]),
+            'valid': transforms.Compose([
+                transforms.Resize(640),
+                transforms.CenterCrop(640),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ]),
+            'test': transforms.Compose([
+                transforms.Resize(640),
+                transforms.CenterCrop(640),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ])
+        }
 
         self.dataloaders = self._prepare_dataloaders(dataset_path)
 
@@ -99,7 +146,7 @@ class ModelTrainer:
         for phase in phases:
             img_dir = os.path.join(dataset_path, f"image/{phase}")
             label_dir = os.path.join(dataset_path, f"label/{phase}")
-            dataset = RoomDataset(img_dir, label_dir, transform=self.data_transforms)
+            dataset = RoomDataset(img_dir, label_dir, transform=self.data_transforms[phase])
             dataloaders[phase] = DataLoader(dataset, batch_size=self.batch_size, shuffle=(phase == "train"))
         return dataloaders
 
@@ -142,6 +189,8 @@ class ModelTrainer:
                         if early_stop_counter >= self.patience:
                             print("Early stopping!")
                             return
+        gc.collect()
+        torch.cuda.empty_cache()
 
     def evaluate(self, path):
         self.model.load_state_dict(torch.load(path))
@@ -171,21 +220,11 @@ class ModelTrainer:
         mse = np.mean((predictions - true_scores) ** 2)
         mae = np.mean(np.abs(predictions - true_scores))
 
-        print(f"Mean Squared Error: {mse:.4f}")
-        print(f"Mean Absolute Error: {mae:.4f}")
+        print(f"MSE : {mse:.4f}")
+        print(f"MAE : {mae:.4f}")
 
-        with open('test_results.csv', 'w', newline='') as file:
+        with open('struct.csv', 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(["File Name", "Predicted Score", "True Score"])
             for fname, pred, true in zip(file_names, predictions, true_scores):
                 writer.writerow([fname, pred, true])
-
-        print("Results saved")
-
-if __name__ == "__main__":
-    dataset_path = os.path.abspath(os.path.join(os.getcwd(), "..", "datasets"))
-    models_path = os.path.abspath(os.path.join(os.getcwd(), "best_model.pth"))
-    
-    trainer = ModelTrainer(dataset_path)
-    trainer.train(models_path)
-    trainer.evaluate(models_path)
