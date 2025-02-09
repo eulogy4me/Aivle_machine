@@ -1,6 +1,5 @@
 from models.Struct import Model
 import os
-import glob
 
 if __name__ == "__main__":
     path = os.getcwd()
