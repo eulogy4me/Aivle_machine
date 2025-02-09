@@ -20,23 +20,24 @@ class RoomDataset(Dataset):
         self.img_files = [f for f in os.listdir(img_dir) if f.endswith((".jpg", ".png"))]
 
         self.room_weights = {
-            13: 2.0,  # 거실
-            14: 2.5,  # 침실
-            15: 2.0,  # 주방
-            16: 1.5,  # 현관
-            17: 1.5,  # 발코니
-            18: 2.0,  # 화장실
-            19: 1.0,  # 실외기실
-            20: 2.0   # 드레스룸
+            13: 800,   # 거실
+            14: 1000,  # 침실
+            15: 800,   # 주방
+            16: 500,   # 현관
+            17: 800,   # 발코니
+            18: 500,   # 화장실
+            19: 800,   # 실외기실
+            20: 1000    # 드레스룸
         }
 
         self.object_weights = {
-            4: 0.5,   # 변기
-            5: 0.5,   # 세면대
-            6: 1.0,   # 싱크대
-            7: 1.0,   # 욕조
-            8: 0.7    # 가스레인지
+            4: 500,    # 변기
+            5: 500,    # 세면대
+            6: 500,    # 싱크대
+            7: 1000,   # 욕조
+            8: 700     # 가스레인지
         }
+
 
     def __len__(self):
         return len(self.img_files)
@@ -63,22 +64,19 @@ class RoomDataset(Dataset):
         room_score = 0.0
         object_score = 0.0
         
-        # 이미지 전체 면적
+        # 이미지 전체 면적 계산
         image_area = float(label_data['images'][0]['width']) * float(label_data['images'][0]['height'])
         
         for a in label_data['annotations']:
             category_id = a['category_id']
             
-            # 방에 대한 점수: 이미지 전체 대비 방이 차지하는 비율을 그대로 사용
             if category_id in self.room_weights:
                 room_score += self.room_weights[category_id] * (a['area'] / image_area)
             
-            # 객체에 대한 점수: count 정보가 있으면 그 수만큼 가중치 곱
             if category_id in self.object_weights:
                 object_score += self.object_weights[category_id] * a.get("count", 1)
         
-        # 최종 점수: 두 요소를 가중합 (raw score, 0~1 스케일 강제 없음)
-        final_score = room_score * 0.7 + object_score * 0.3
+        final_score = room_score * 0.9 + object_score * 0.1
         return final_score
 
 class RoomQualityModel(nn.Module):
@@ -104,13 +102,13 @@ class RoomQualityModel(nn.Module):
 class Model:
     def __init__(self, dataset_path):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.learning_rate = 0.01
+        self.learning_rate = 0.001
         self.batch_size = 16
         self.epochs = 5
         self.patience = 2
 
         self.model = RoomQualityModel().to(self.device)
-        self.criterion = nn.MSELoss()
+        self.criterion = nn.HuberLoss()
         self.optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=1e-4)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.1, patience=2)
 

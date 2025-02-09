@@ -35,33 +35,14 @@ if __name__ == "__main__":
         ], inplace=True
     )
     
-    targets = 'people'
-    
-    X, y , X_test, y_test, df_temp = preprocess(df, targets)
-
-    PEOPLE = models.Single.ModelTrainer()
-    PEOPLE.load(path + "/pkl/people.cbm")
-
-    pred_results = get_pred(df_temp, PEOPLE, targets)
-    df[targets] = pred_results
-    df[targets] = pd.to_numeric(df[targets], errors='coerce').astype(int)
-
-    targets = ['Rate1','Rate2','Rate3']
-    X, y , X_test, y_test, df_temp = preprocess(df, targets)
-
-    RATES = models.Multi.ModelTrainer()
-    RATES.load(path + "/pkl/rates.cbm")
-    pred_results = get_pred(df_temp, RATES, targets)
-    for i, target in enumerate(targets):
-        df[target] = pred_results[:, i] * df['people']
-    
     targets = ['Qty']
     X, y , X_test, y_test, df_temp = preprocess(df, targets)
 
     QTY = models.Qty.ModelTrainer()
     QTY.load(path + "/pkl/qty.cbm")
     pred_results = get_pred(df_temp, QTY, targets)
-    df[target] = pred_results
+    df[targets] = pred_results
     df[targets] = pd.to_numeric(df[targets], errors='coerce').astype(int)
-    
+
+
     df.to_csv(path + "/rslt/output.csv")
