@@ -3,7 +3,7 @@ import requests
 import time
 import os
 
-api_key = "23e9b71331e117feec8413605dc7842f"
+api_key = ""
 path = os.getcwd() + "/data"
 df = pd.read_csv(path + "/data.csv")
 
